@@ -9,6 +9,7 @@ from scipy.interpolate import Rbf
 
 from collections import OrderedDict
 from constants import *
+import psutil
 
 def update_progress(index, length, **kwargs):
     '''
@@ -263,6 +264,13 @@ def compute_weights_and_macs(network_def):
     return layer_weights_dict, total_num_weights, layer_macs_dict, total_num_macs
 
 
+def get_current_memory():
+    #MB = 1048576.0
+    pid = os.getpid()
+    p = psutil.Process(pid)
+    memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used]
+    return memory[2] #/ MB
+
 def measure_latency(model, input_data_shape, runtimes=500):
     '''
         Measure latency of 'model'
@@ -286,15 +294,19 @@ def measure_latency(model, input_data_shape, runtimes=500):
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
             input = input.cuda(cuda_num)    
             with torch.no_grad():
+                #start = get_current_memory() #time.time()
                 start = time.time()
                 model(input)
                 torch.cuda.synchronize()
+                #finish = get_current_memory() #time.time()
                 finish = time.time()
         else:
             input = torch.randn(input_data_shape)
             with torch.no_grad():
+                #start = get_current_memory() #time.time()
                 start = time.time()
                 model(input)
+                #finish = get_current_memory() #time.time()
                 finish = time.time()
         total_time += (finish - start)
     return total_time/float(runtimes)
