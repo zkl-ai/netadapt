@@ -10,6 +10,7 @@ from scipy.interpolate import Rbf
 from collections import OrderedDict
 from constants import *
 import psutil
+import os
 
 def update_progress(index, length, **kwargs):
     '''
@@ -294,20 +295,20 @@ def measure_latency(model, input_data_shape, runtimes=500):
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
             input = input.cuda(cuda_num)    
             with torch.no_grad():
-                #start = get_current_memory() #time.time()
-                start = time.time()
+                start = get_current_memory() #time.time()
+                #start = time.time()
                 model(input)
                 torch.cuda.synchronize()
-                #finish = get_current_memory() #time.time()
-                finish = time.time()
+                finish = get_current_memory() #time.time()
+                #finish = time.time()
         else:
             input = torch.randn(input_data_shape)
             with torch.no_grad():
-                #start = get_current_memory() #time.time()
-                start = time.time()
+                start = get_current_memory() #time.time()
+                #start = time.time()
                 model(input)
-                #finish = get_current_memory() #time.time()
-                finish = time.time()
+                finish = get_current_memory() #time.time()
+                #finish = time.time()
         total_time += (finish - start)
     return total_time/float(runtimes)
 
@@ -731,6 +732,8 @@ def simplify_model_based_on_network_def(simplified_network_def, model):
                     KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR]
                 kept_filter_idx = (kept_filter_idx[::before_squared_pixel_shuffle_factor] /
                                    before_squared_pixel_shuffle_factor)
+                
+                kept_filter_idx=kept_filter_idx.type(torch.long)
 
                 if layer_param_name == WEIGHTSTRING: #WEIGHTSTRING == layer_param_name:                    
                     if layer.groups == 1:  # Pointwise layer or depthwise layer with only one filter.
