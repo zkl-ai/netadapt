@@ -30,7 +30,7 @@ MIN_FC_FEATRE_SIZE    = 64
         a layer in order to get its latency.
 '''
 MEASURE_LATENCY_BATCH_SIZE = 128
-MEASURE_LATENCY_SAMPLE_TIMES = 500
+MEASURE_LATENCY_SAMPLE_TIMES = 10
 
 
 arg_parser = ArgumentParser(description='Build latency lookup table')
