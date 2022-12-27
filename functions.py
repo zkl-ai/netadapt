@@ -9,6 +9,7 @@ from scipy.interpolate import Rbf
 
 from collections import OrderedDict
 from constants import *
+from jtop import jtop
 import psutil
 import os
 
@@ -267,10 +268,14 @@ def compute_weights_and_macs(network_def):
 
 def get_current_memory():
     #MB = 1048576.0
+    j = jtop()
+    j.start()
+    j_ram = j.stats['RAM']
+    j.close()
     pid = os.getpid()
     p = psutil.Process(pid)
-    memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used]
-    return memory[2] #/ MB
+    memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used, j_ram]
+    return memory[3] #/ MB
 
 def measure_latency(model, input_data_shape, runtimes=500):
     '''
@@ -286,7 +291,7 @@ def measure_latency(model, input_data_shape, runtimes=500):
         Output: 
             average time (float)
     '''
-    total_time = .0
+    total_time = []
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
@@ -309,8 +314,8 @@ def measure_latency(model, input_data_shape, runtimes=500):
                 model(input)
                 finish = get_current_memory() #time.time()
                 #finish = time.time()
-        total_time += (finish - start)
-    return total_time/float(runtimes)
+        total_time.append(finish - start)
+    return total_time
 
 
 def compute_latency_from_lookup_table(network_def, lookup_table_path):
