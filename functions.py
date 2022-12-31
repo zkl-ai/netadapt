@@ -295,12 +295,13 @@ def measure_latency(model, input_data_shape, runtimes=500):
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
+    start = get_current_memory()
     for i in range(runtimes):       
         if is_cuda:
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
             input = input.cuda(cuda_num)    
             with torch.no_grad():
-                start = get_current_memory() #time.time()
+                #start = get_current_memory() #time.time()
                 #start = time.time()
                 model(input)
                 torch.cuda.synchronize()
@@ -309,7 +310,7 @@ def measure_latency(model, input_data_shape, runtimes=500):
         else:
             input = torch.randn(input_data_shape)
             with torch.no_grad():
-                start = get_current_memory() #time.time()
+                #start = get_current_memory() #time.time()
                 #start = time.time()
                 model(input)
                 finish = get_current_memory() #time.time()
@@ -537,6 +538,7 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
             if verbose:
                 print(' ')
                 print('    Finish measuring num_in_channels =', reduced_num_in_channels)
+        break
     # Save the lookup table.
     with open(lookup_table_path, 'wb') as file_id:
         pickle.dump(lookup_table, file_id)      
