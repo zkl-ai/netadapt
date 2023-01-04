@@ -12,6 +12,7 @@ from constants import *
 from jtop import jtop
 import psutil
 import os
+from multiprocessing import Queue, get_context, Manager
 
 def update_progress(index, length, **kwargs):
     '''
@@ -276,8 +277,9 @@ def get_current_memory():
     p = psutil.Process(pid)
     memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used, j_ram]
     return memory[3] #/ MB
+    #return j_ram
 
-def measure_latency(model, input_data_shape, runtimes=500):
+def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, layer_name, KEY_LATENCY, in_out_channels):
     '''
         Measure latency of 'model'
         
@@ -292,10 +294,12 @@ def measure_latency(model, input_data_shape, runtimes=500):
             average time (float)
     '''
     total_time = []
+    start = get_current_memory()
+    model = model.cuda()
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
-    start = get_current_memory()
+    #start = get_current_memory()
     for i in range(runtimes):       
         if is_cuda:
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
@@ -316,7 +320,10 @@ def measure_latency(model, input_data_shape, runtimes=500):
                 finish = get_current_memory() #time.time()
                 #finish = time.time()
         total_time.append(finish - start)
-    return total_time
+    #return total_time
+    lookup_table[layer_name][KEY_LATENCY][in_out_channels] = total_time
+    print(total_time)
+    lock.release()
 
 
 def compute_latency_from_lookup_table(network_def, lookup_table_path):
@@ -413,132 +420,142 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
     resource_type = 'LATENCY'
     # Generate the lookup table.
     lookup_table = OrderedDict()
-    for layer_name, layer_properties in network_def_full.items():
+    #manager = Manager()
+    with Manager() as m:
+        lock = m.Lock()
+        for layer_name, layer_properties in network_def_full.items():
         
-        if verbose:
-            print('-------------------------------------------')
-            print('Measuring layer', layer_name, ':')
-        
-        # If the layer has the same properties as a previous layer, directly use the previous lookup table.
-        for layer_name_pre, layer_properties_pre in network_def_full.items():
-            if layer_name_pre == layer_name:
-                break
-
-            # Do not consider pixel shuffling.
-            layer_properties_pre[KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR] = layer_properties[
-                KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR]
-            layer_properties_pre[KEY_AFTER_SQUSRED_PIXEL_SHUFFLE_FACTOR] = layer_properties[
-                KEY_AFTER_SQUSRED_PIXEL_SHUFFLE_FACTOR]
-
-            if layer_properties_pre == layer_properties:
-                lookup_table[layer_name] = lookup_table[layer_name_pre]
-                if verbose:
-                    print('    Find previous layer', layer_name_pre, 'that has the same properties')
-                break
-        if layer_name in lookup_table:
-            continue
-
-        is_depthwise = layer_properties[KEY_IS_DEPTHWISE]
-        num_in_channels = layer_properties[KEY_NUM_IN_CHANNELS]
-        num_out_channels = layer_properties[KEY_NUM_OUT_CHANNELS]
-        kernel_size = layer_properties[KEY_KERNEL_SIZE]
-        stride = layer_properties[KEY_STRIDE]
-        padding = layer_properties[KEY_PADDING]
-        groups = layer_properties[KEY_GROUPS]
-        layer_type_str = layer_properties[KEY_LAYER_TYPE_STR]
-        input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
-        
-        
-        lookup_table[layer_name] = {}
-        lookup_table[layer_name][KEY_IS_DEPTHWISE]      = is_depthwise
-        lookup_table[layer_name][KEY_NUM_IN_CHANNELS]   = num_in_channels
-        lookup_table[layer_name][KEY_NUM_OUT_CHANNELS]  = num_out_channels
-        lookup_table[layer_name][KEY_KERNEL_SIZE]       = kernel_size
-        lookup_table[layer_name][KEY_STRIDE]            = stride
-        lookup_table[layer_name][KEY_PADDING]           = padding
-        lookup_table[layer_name][KEY_GROUPS]            = groups
-        lookup_table[layer_name][KEY_LAYER_TYPE_STR]    = layer_type_str
-        lookup_table[layer_name][KEY_INPUT_FEATURE_MAP_SIZE] = input_data_shape
-        lookup_table[layer_name][KEY_LATENCY]           = {}
-        
-        print('Is depthwise:', is_depthwise)
-        print('Num in channels:', num_in_channels)
-        print('Num out channels:', num_out_channels)
-        print('Kernel size:', kernel_size)
-        print('Stride:', stride)
-        print('Padding:', padding)
-        print('Groups:', groups)
-        print('Input feature map size:', input_data_shape)
-        print('Layer type:', layer_type_str)
-        
-        '''
-        if num_in_channels >= min_feature_size and \
-            (num_in_channels % min_feature_size != 0 or num_out_channels % min_feature_size != 0):
-            raise ValueError('The number of channels is not divisible by {}.'.format(str(min_feature_size)))
-        '''
-        
-        if layer_type_str in CONV_LAYER_TYPES:
-            min_feature_size = min_conv_feature_size
-        elif layer_type_str in FC_LAYER_TYPES:
-            min_feature_size = min_fc_feature_size
-        else:
-            raise ValueError('Layer type {} not supported'.format(layer_type_str))
-        
-        for reduced_num_in_channels in range(num_in_channels, 0, -min_feature_size):
             if verbose:
-                index = 1
-                print('    Start measuring num_in_channels =', reduced_num_in_channels)
-            
-            if is_depthwise:
-                reduced_num_out_channels_list = [reduced_num_in_channels]
+                print('-------------------------------------------')
+                print('Measuring layer', layer_name, ':')
+        
+            # If the layer has the same properties as a previous layer, directly use the previous lookup table.
+            for layer_name_pre, layer_properties_pre in network_def_full.items():
+                if layer_name_pre == layer_name:
+                    break
+
+                # Do not consider pixel shuffling.
+                layer_properties_pre[KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR] = layer_properties[
+                    KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR]
+                layer_properties_pre[KEY_AFTER_SQUSRED_PIXEL_SHUFFLE_FACTOR] = layer_properties[
+                    KEY_AFTER_SQUSRED_PIXEL_SHUFFLE_FACTOR]
+
+                if layer_properties_pre == layer_properties:
+                    lookup_table[layer_name] = lookup_table[layer_name_pre]
+                    if verbose:
+                     print('    Find previous layer', layer_name_pre, 'that has the same properties')
+                    break
+            if layer_name in lookup_table:
+                continue
+
+            is_depthwise = layer_properties[KEY_IS_DEPTHWISE]
+            num_in_channels = layer_properties[KEY_NUM_IN_CHANNELS]
+            num_out_channels = layer_properties[KEY_NUM_OUT_CHANNELS]
+            kernel_size = layer_properties[KEY_KERNEL_SIZE]
+            stride = layer_properties[KEY_STRIDE]
+            padding = layer_properties[KEY_PADDING]
+            groups = layer_properties[KEY_GROUPS]
+            layer_type_str = layer_properties[KEY_LAYER_TYPE_STR]
+            input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
+        
+        
+            lookup_table[layer_name] = {}
+            lookup_table[layer_name][KEY_IS_DEPTHWISE]      = is_depthwise
+            lookup_table[layer_name][KEY_NUM_IN_CHANNELS]   = num_in_channels
+            lookup_table[layer_name][KEY_NUM_OUT_CHANNELS]  = num_out_channels
+            lookup_table[layer_name][KEY_KERNEL_SIZE]       = kernel_size
+            lookup_table[layer_name][KEY_STRIDE]            = stride
+            lookup_table[layer_name][KEY_PADDING]           = padding
+            lookup_table[layer_name][KEY_GROUPS]            = groups
+            lookup_table[layer_name][KEY_LAYER_TYPE_STR]    = layer_type_str
+            lookup_table[layer_name][KEY_INPUT_FEATURE_MAP_SIZE] = input_data_shape
+            lookup_table[layer_name][KEY_LATENCY]           = {}
+        
+            print('Is depthwise:', is_depthwise)
+            print('Num in channels:', num_in_channels)
+            print('Num out channels:', num_out_channels)
+            print('Kernel size:', kernel_size)
+            print('Stride:', stride)
+            print('Padding:', padding)
+            print('Groups:', groups)
+            print('Input feature map size:', input_data_shape)
+            print('Layer type:', layer_type_str)
+        
+            '''
+            if num_in_channels >= min_feature_size and \
+                (num_in_channels % min_feature_size != 0 or num_out_channels % min_feature_size != 0):
+                raise ValueError('The number of channels is not divisible by {}.'.format(str(min_feature_size)))
+            '''
+        
+            if layer_type_str in CONV_LAYER_TYPES:
+                min_feature_size = min_conv_feature_size
+            elif layer_type_str in FC_LAYER_TYPES:
+                min_feature_size = min_fc_feature_size
             else:
-                reduced_num_out_channels_list = list(range(num_out_channels, 0, -min_feature_size))
-                
-            for reduced_num_out_channels in reduced_num_out_channels_list:                
-                if resource_type == 'LATENCY':
-                    if layer_type_str == 'Conv2d':
-                        if is_depthwise:
-                            layer_test = torch.nn.Conv2d(reduced_num_in_channels, reduced_num_out_channels, \
-                            kernel_size, stride, padding, groups=reduced_num_in_channels)
-                        else:
-                            layer_test = torch.nn.Conv2d(reduced_num_in_channels, reduced_num_out_channels, \
-                            kernel_size, stride, padding, groups=groups)
-                        input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
-                        input_data_shape = (measure_latency_batch_size, 
-                            reduced_num_in_channels, *input_data_shape[2::])
-                    elif layer_type_str == 'Linear':
-                        layer_test = torch.nn.Linear(reduced_num_in_channels, reduced_num_out_channels)
-                        input_data_shape = (measure_latency_batch_size, reduced_num_in_channels)
-                    elif layer_type_str == 'ConvTranspose2d':
-                        if is_depthwise:
-                            layer_test = torch.nn.ConvTranspose2d(reduced_num_in_channels, reduced_num_out_channels, 
-                                kernel_size, stride, padding, groups=reduced_num_in_channels)
-                        else:
-                            layer_test = torch.nn.ConvTranspose2d(reduced_num_in_channels, reduced_num_out_channels, 
-                                kernel_size, stride, padding, groups=groups)
-                        input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
-                        input_data_shape = (measure_latency_batch_size, 
-                            reduced_num_in_channels, *input_data_shape[2::])
-                    else:
-                        raise ValueError('Not support this type of layer.')
-                    if torch.cuda.is_available():
-                        layer_test = layer_test.cuda()
-                    measurement = measure_latency(layer_test, input_data_shape, measure_latency_sample_times)
-                else:
-                    raise ValueError('Only support building the lookup table for `LATENCY`.')
+                raise ValueError('Layer type {} not supported'.format(layer_type_str))
+        
 
-
-                # Add the measurement into the lookup table.
-                lookup_table[layer_name][KEY_LATENCY][(reduced_num_in_channels, reduced_num_out_channels)] = measurement
-                
+            for reduced_num_in_channels in range(num_in_channels, 0, -min_feature_size):
                 if verbose:
-                    update_progress(index, len(reduced_num_out_channels_list), latency=str(measurement))
-                    index = index + 1
+                    index = 1
+                    print('    Start measuring num_in_channels =', reduced_num_in_channels)
+            
+                if is_depthwise:
+                    reduced_num_out_channels_list = [reduced_num_in_channels]
+                else:
+                    reduced_num_out_channels_list = list(range(num_out_channels, 0, -min_feature_size))
+                
+                for reduced_num_out_channels in reduced_num_out_channels_list:                
+                    if resource_type == 'LATENCY':
+                        if layer_type_str == 'Conv2d':
+                            if is_depthwise:
+                                layer_test = torch.nn.Conv2d(reduced_num_in_channels, reduced_num_out_channels, \
+                                kernel_size, stride, padding, groups=reduced_num_in_channels)
+                            else:
+                                layer_test = torch.nn.Conv2d(reduced_num_in_channels, reduced_num_out_channels, \
+                                kernel_size, stride, padding, groups=groups)
+                            input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
+                            input_data_shape = (measure_latency_batch_size, 
+                                reduced_num_in_channels, *input_data_shape[2::])
+                        elif layer_type_str == 'Linear':
+                            layer_test = torch.nn.Linear(reduced_num_in_channels, reduced_num_out_channels)
+                            input_data_shape = (measure_latency_batch_size, reduced_num_in_channels)
+                        elif layer_type_str == 'ConvTranspose2d':
+                            if is_depthwise:
+                                layer_test = torch.nn.ConvTranspose2d(reduced_num_in_channels, reduced_num_out_channels, 
+                                    kernel_size, stride, padding, groups=reduced_num_in_channels)
+                            else:
+                                layer_test = torch.nn.ConvTranspose2d(reduced_num_in_channels, reduced_num_out_channels, 
+                                    kernel_size, stride, padding, groups=groups)
+                            input_data_shape = layer_properties[KEY_INPUT_FEATURE_MAP_SIZE]
+                            input_data_shape = (measure_latency_batch_size, 
+                                reduced_num_in_channels, *input_data_shape[2::])
+                        else:
+                            raise ValueError('Not support this type of layer.')
+                        #if torch.cuda.is_available():
+                            #layer_test = layer_test.cuda()
                     
-            if verbose:
-                print(' ')
-                print('    Finish measuring num_in_channels =', reduced_num_in_channels)
-        break
+                        lock.acquire()
+                        ctx = get_context('spawn')
+                        t = ctx.Process(target=measure_latency, args=(layer_test, input_data_shape, measure_latency_sample_times, lock, lookup_table, layer_name, KEY_LATENCY, (reduced_num_in_channels, reduced_num_out_channels)))
+                        t.start()
+                        t.join()
+                        #measurement = measure_latency(layer_test, input_data_shape, measure_latency_sample_times)
+                    else:
+                        raise ValueError('Only support building the lookup table for `LATENCY`.')
+
+
+                    # Add the measurement into the lookup table.
+                    #lookup_table[layer_name][KEY_LATENCY][(reduced_num_in_channels, reduced_num_out_channels)] = measurement
+                
+                    #if verbose:
+                        #update_progress(index, len(reduced_num_out_channels_list), latency=str(measurement))
+                        #index = index + 1
+                    
+                if verbose:
+                    print(' ')
+                    print('    Finish measuring num_in_channels =', reduced_num_in_channels)
+            break
     # Save the lookup table.
     with open(lookup_table_path, 'wb') as file_id:
         pickle.dump(lookup_table, file_id)      
