@@ -279,7 +279,7 @@ def get_current_memory():
     return memory[3] #/ MB
     #return j_ram
 
-def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, layer_name, KEY_LATENCY, in_out_channels):
+def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, key):
     '''
         Measure latency of 'model'
         
@@ -294,12 +294,12 @@ def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, layer
             average time (float)
     '''
     total_time = []
-    start = get_current_memory()
+    #start = get_current_memory()
     model = model.cuda()
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
-    #start = get_current_memory()
+    start = get_current_memory()
     for i in range(runtimes):       
         if is_cuda:
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
@@ -321,8 +321,7 @@ def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, layer
                 #finish = time.time()
         total_time.append(finish - start)
     #return total_time
-    lookup_table[layer_name][KEY_LATENCY][in_out_channels] = total_time
-    print(total_time)
+    lookup_table[key] = total_time
     lock.release()
 
 
@@ -423,6 +422,7 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
     #manager = Manager()
     with Manager() as m:
         lock = m.Lock()
+        tmp_table = m.dict()
         for layer_name, layer_properties in network_def_full.items():
         
             if verbose:
@@ -537,20 +537,22 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                     
                         lock.acquire()
                         ctx = get_context('spawn')
-                        t = ctx.Process(target=measure_latency, args=(layer_test, input_data_shape, measure_latency_sample_times, lock, lookup_table, layer_name, KEY_LATENCY, (reduced_num_in_channels, reduced_num_out_channels)))
+                        key = layer_name + "_" +KEY_LATENCY +"_" + str(reduced_num_in_channels) + "_" + str(reduced_num_out_channels)
+                        t = ctx.Process(target=measure_latency, args=(layer_test, input_data_shape, measure_latency_sample_times, lock, tmp_table, key))
                         t.start()
                         t.join()
+                        measurement = tmp_table[key]
                         #measurement = measure_latency(layer_test, input_data_shape, measure_latency_sample_times)
                     else:
                         raise ValueError('Only support building the lookup table for `LATENCY`.')
 
 
                     # Add the measurement into the lookup table.
-                    #lookup_table[layer_name][KEY_LATENCY][(reduced_num_in_channels, reduced_num_out_channels)] = measurement
+                    lookup_table[layer_name][KEY_LATENCY][(reduced_num_in_channels, reduced_num_out_channels)] = measurement
                 
-                    #if verbose:
-                        #update_progress(index, len(reduced_num_out_channels_list), latency=str(measurement))
-                        #index = index + 1
+                    if verbose:
+                        update_progress(index, len(reduced_num_out_channels_list), latency=str(measurement))
+                        index = index + 1
                     
                 if verbose:
                     print(' ')
