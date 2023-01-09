@@ -294,12 +294,12 @@ def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, key):
             average time (float)
     '''
     total_time = []
-    #start = get_current_memory()
+    start = get_current_memory()
     model = model.cuda()
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
-    start = get_current_memory()
+    #start = get_current_memory()
     for i in range(runtimes):       
         if is_cuda:
             input = torch.cuda.FloatTensor(*input_data_shape).normal_(0, 1)
@@ -480,7 +480,8 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
             print('Groups:', groups)
             print('Input feature map size:', input_data_shape)
             print('Layer type:', layer_type_str)
-        
+            if 'classifier' not in layer_name:
+                continue
             '''
             if num_in_channels >= min_feature_size and \
                 (num_in_channels % min_feature_size != 0 or num_out_channels % min_feature_size != 0):
@@ -504,7 +505,7 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                     reduced_num_out_channels_list = [reduced_num_in_channels]
                 else:
                     reduced_num_out_channels_list = list(range(num_out_channels, 0, -min_feature_size))
-                
+         
                 for reduced_num_out_channels in reduced_num_out_channels_list:                
                     if resource_type == 'LATENCY':
                         if layer_type_str == 'Conv2d':
@@ -534,12 +535,14 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                             raise ValueError('Not support this type of layer.')
                         #if torch.cuda.is_available():
                             #layer_test = layer_test.cuda()
-                    
                         lock.acquire()
+                        print("lock.acquire")
                         ctx = get_context('spawn')
                         key = layer_name + "_" +KEY_LATENCY +"_" + str(reduced_num_in_channels) + "_" + str(reduced_num_out_channels)
+                        print("before create process")
                         t = ctx.Process(target=measure_latency, args=(layer_test, input_data_shape, measure_latency_sample_times, lock, tmp_table, key))
                         t.start()
+                        print("t start")
                         t.join()
                         measurement = tmp_table[key]
                         #measurement = measure_latency(layer_test, input_data_shape, measure_latency_sample_times)
@@ -557,10 +560,10 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                 if verbose:
                     print(' ')
                     print('    Finish measuring num_in_channels =', reduced_num_in_channels)
-            break
-    # Save the lookup table.
-    with open(lookup_table_path, 'wb') as file_id:
-        pickle.dump(lookup_table, file_id)      
+            #break
+            # Save the lookup table.
+            with open(lookup_table_path, 'wb') as file_id:
+                pickle.dump(lookup_table, file_id)      
     return 
 
 
