@@ -295,6 +295,7 @@ def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, key):
     '''
     total_time = []
     start = get_current_memory()
+    model = torch.nn.Linear(model[0], model[1])
     model = model.cuda()
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
@@ -519,7 +520,7 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                             input_data_shape = (measure_latency_batch_size, 
                                 reduced_num_in_channels, *input_data_shape[2::])
                         elif layer_type_str == 'Linear':
-                            layer_test = torch.nn.Linear(reduced_num_in_channels, reduced_num_out_channels)
+                            layer_test = (reduced_num_in_channels, reduced_num_out_channels)#torch.nn.Linear(reduced_num_in_channels, reduced_num_out_channels)
                             input_data_shape = (measure_latency_batch_size, reduced_num_in_channels)
                         elif layer_type_str == 'ConvTranspose2d':
                             if is_depthwise:
@@ -536,13 +537,10 @@ def build_latency_lookup_table(network_def_full, lookup_table_path, min_conv_fea
                         #if torch.cuda.is_available():
                             #layer_test = layer_test.cuda()
                         lock.acquire()
-                        print("lock.acquire")
                         ctx = get_context('spawn')
                         key = layer_name + "_" +KEY_LATENCY +"_" + str(reduced_num_in_channels) + "_" + str(reduced_num_out_channels)
-                        print("before create process")
                         t = ctx.Process(target=measure_latency, args=(layer_test, input_data_shape, measure_latency_sample_times, lock, tmp_table, key))
                         t.start()
-                        print("t start")
                         t.join()
                         measurement = tmp_table[key]
                         #measurement = measure_latency(layer_test, input_data_shape, measure_latency_sample_times)
