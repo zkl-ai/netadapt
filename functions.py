@@ -9,10 +9,10 @@ from scipy.interpolate import Rbf
 
 from collections import OrderedDict
 from constants import *
-from jtop import jtop
-import psutil
+# from jtop import jtop
+# import psutil
 import os
-from multiprocessing import Queue, get_context, Manager
+# from multiprocessing import Queue, get_context, Manager
 
 def update_progress(index, length, **kwargs):
     '''
@@ -269,15 +269,16 @@ def compute_weights_and_macs(network_def):
 
 def get_current_memory():
     #MB = 1048576.0
-    j = jtop()
-    j.start()
-    j_ram = j.stats['RAM']
-    j.close()
-    pid = os.getpid()
-    p = psutil.Process(pid)
-    memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used, j_ram]
-    return memory[3] #/ MB
+#     j = jtop()
+#     j.start()
+#     j_ram = j.stats['RAM']
+#     j.close()
+#     pid = os.getpid()
+#     p = psutil.Process(pid)
+#     memory = [torch.cuda.memory_allocated(), p.memory_full_info().uss, psutil.virtual_memory().used, j_ram]
+#     return memory[3] #/ MB
     #return j_ram
+    return 
 
 def measure_latency(model, input_data_shape, runtimes, lock, lookup_table, key):
     '''

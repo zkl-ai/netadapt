@@ -154,8 +154,8 @@ def _find_best_model(worker_folder, iteration, num_blocks, starting_accuracy, st
         ratio_resource_accuracy = (starting_accuracy - accuracy + 1e-6) / (starting_resource - resource + 1e-5)
         
         print('Block id {}: resource {}, accuracy {}'.format(block_idx, resource, accuracy))
-        if resource < starting_resource and ratio_resource_accuracy < best_ratio:
-        #if resource < starting_resource and accuracy > best_accuracy:
+        #if resource < starting_resource and ratio_resource_accuracy < best_ratio:
+        if resource < starting_resource and accuracy > best_accuracy:
             best_ratio = ratio_resource_accuracy
             best_accuracy = accuracy
             best_model_path = os.path.join(worker_folder,
@@ -339,6 +339,12 @@ def master(args):
             ('Process iteration {:>3}: current_accuracy = {:>8.3f}, '
              'current_resource = {:>8.3f}, target_resource = {:>8.3f}').format(
                 current_iter, current_accuracy, current_resource, target_resource))
+        with open (worker_folder+"/acc.txt", 'a') as acc_file:
+            acc_file.write(
+            ('Process iteration {:>3}: current_accuracy = {:>8.3f}, '
+             'current_resource = {:>8.3f}, target_resource = {:>8.3f}\n').format(
+                current_iter, current_accuracy, current_resource, target_resource)
+            )
 
         # Launch the workers.
         job_list = []

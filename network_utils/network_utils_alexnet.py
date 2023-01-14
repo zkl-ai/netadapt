@@ -92,7 +92,7 @@ class networkUtils_alexnet(NetworkUtilsAbstract):
         '''
         # Data loaders for fine tuning and evaluation.
         self.batch_size = 128
-        self.num_workers = 4
+        self.num_workers = 0
         self.momentum = 0.9
         self.weight_decay = 1e-4
         self.finetune_lr = finetune_lr
