@@ -154,8 +154,8 @@ def _find_best_model(worker_folder, iteration, num_blocks, starting_accuracy, st
         ratio_resource_accuracy = (starting_accuracy - accuracy + 1e-6) / (starting_resource - resource + 1e-5)
         
         print('Block id {}: resource {}, accuracy {}'.format(block_idx, resource, accuracy))
-        #if resource < starting_resource and ratio_resource_accuracy < best_ratio:
-        if resource < starting_resource and accuracy > best_accuracy:
+        if resource < starting_resource and ratio_resource_accuracy < best_ratio:
+        #if resource < starting_resource and accuracy > best_accuracy:
             best_ratio = ratio_resource_accuracy
             best_accuracy = accuracy
             best_model_path = os.path.join(worker_folder,
@@ -292,8 +292,9 @@ def master(args):
             warnings.warn(warnMsg)
             network_utils.build_lookup_table(network_def, args.resource_type, args.lookup_table_path)
         current_resource = network_utils.compute_resource(network_def, args.resource_type, args.lookup_table_path)
-
+        print("start")
         current_accuracy = network_utils.evaluate(model)
+        print("end")
         current_block = None
         
         if args.init_resource_reduction == None:
