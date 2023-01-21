@@ -1,0 +1,7 @@
+Iteration,Accuracy,Resource,Block,Source Model
+0,100.0,22496904.400000002,None,./models/alexnet/model.pth.tar,64 192 384 256 256 4096 4096 10
+1,99.976,22187685.2,2,models/alexnet/prune-by-mem0.6_0.01/worker/iter_1_block_2_model.pth.tar,64 192 264 256 256 4096 4096 10
+2,98.916,21959291.2,1,models/alexnet/prune-by-mem0.6_0.01/worker/iter_2_block_1_model.pth.tar,64 120 264 256 256 4096 4096 10
+3,96.60600000000001,21692039.599999998,1,models/alexnet/prune-by-mem0.6_0.01/worker/iter_3_block_1_model.pth.tar,64 96 264 256 256 4096 4096 10
+4,91.876,21491975.10579071,5,models/alexnet/prune-by-mem0.6_0.01/worker/iter_4_block_5_model.pth.tar,64 96 264 256 256 592 4096 10
+5,70.55799999999999,21253326.70579071,0,models/alexnet/prune-by-mem0.6_0.01/worker/iter_5_block_0_model.pth.tar,24 96 264 256 256 592 4096 10
