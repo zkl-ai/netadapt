@@ -297,7 +297,7 @@ def measure_latency(model, input_data_shape, runtimes=500):
                 model(input)
                 finish = time.time()
         #total_time += (finish - start)
-        total_time.append(finish-start))
+        total_time.append(finish-start)
     print(total_time)
     return total_time#/float(runtimes)
 
