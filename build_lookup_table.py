@@ -4,10 +4,10 @@ import nets as models
 import functions as fns
 from argparse import ArgumentParser
 
-model_names = sorted(name for name in models.__dict__
-    if name.islower() and not name.startswith("__")
-    and callable(models.__dict__[name]))
-
+#model_names = sorted(name for name in models.__dict__
+#    if name.islower() and not name.startswith("__")
+#    and callable(models.__dict__[name]))
+model_names = ['vgg19','resnet34','alexnet']
 NUM_CLASSES = 10
 
 INPUT_DATA_SHAPE = (3, 224, 224)
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     
     print('Load', model_arch)
     print('--------------------------------------')
-    model = models.__dict__[model_arch](num_classes=NUM_CLASSES)
+    model = torch.load(f'models/{model_arch}/model.pth.tar')#models.__dict__[model_arch](num_classes=NUM_CLASSES)
     network_def = fns.get_network_def_from_model(model, INPUT_DATA_SHAPE)
     for layer_name, layer_properties in network_def.items():
         print(layer_name)
