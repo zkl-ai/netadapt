@@ -29,8 +29,8 @@ MIN_FC_FEATRE_SIZE    = 64
     `MEASURE_LATENCY_SAMPLE_TIMES`: the number of times to run the forward function of 
         a layer in order to get its latency.
 '''
-MEASURE_LATENCY_BATCH_SIZE = 128
-MEASURE_LATENCY_SAMPLE_TIMES = 500
+MEASURE_LATENCY_BATCH_SIZE = 32
+MEASURE_LATENCY_SAMPLE_TIMES = 11
 
 
 arg_parser = ArgumentParser(description='Build latency lookup table')
@@ -91,5 +91,4 @@ if __name__ == '__main__':
     latency = fns.measure_latency(model, 
         [MEASURE_LATENCY_BATCH_SIZE, *INPUT_DATA_SHAPE])
     print('Exact latency:        ', latency)    
-    
     

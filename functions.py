@@ -277,7 +277,7 @@ def measure_latency(model, input_data_shape, runtimes=500):
         Output: 
             average time (float)
     '''
-    total_time = .0
+    total_time = []
     is_cuda = next(model.parameters()).is_cuda
     if is_cuda: 
         cuda_num = next(model.parameters()).get_device()
@@ -296,8 +296,10 @@ def measure_latency(model, input_data_shape, runtimes=500):
                 start = time.time()
                 model(input)
                 finish = time.time()
-        total_time += (finish - start)
-    return total_time/float(runtimes)
+        #total_time += (finish - start)
+        total_time.append(finish-start))
+    print(total_time)
+    return total_time#/float(runtimes)
 
 
 def compute_latency_from_lookup_table(network_def, lookup_table_path):
