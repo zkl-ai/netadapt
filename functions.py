@@ -721,6 +721,7 @@ def simplify_model_based_on_network_def(simplified_network_def, model):
                     KEY_BEFORE_SQUARED_PIXEL_SHUFFLE_FACTOR]
                 kept_filter_idx = (kept_filter_idx[::before_squared_pixel_shuffle_factor] /
                                    before_squared_pixel_shuffle_factor)
+                kept_filter_idx=kept_filter_idx.type(torch.long)
 
                 if layer_param_name == WEIGHTSTRING: #WEIGHTSTRING == layer_param_name:                    
                     if layer.groups == 1:  # Pointwise layer or depthwise layer with only one filter.
