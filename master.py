@@ -280,7 +280,7 @@ def master(args):
         copyfile(args.init_model_path, current_model_path)
 
         # Initialize variables.
-        model = torch.load(current_model_path)
+        model = torch.load(current_model_path, map_location=torch.device('cpu'))
         
         # Select network_utils.
         model_arch = args.arch
