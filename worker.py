@@ -36,7 +36,7 @@ def worker(args):
     # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # Get the network utils.
-    model = torch.load(args.model_path)
+    model = torch.load(args.model_path, map_location=torch.device('cpu'))
     network_utils = networkUtils.__dict__[args.arch](model, args.input_data_shape, args.dataset_path, args.finetune_lr)
     
     if network_utils.get_num_simplifiable_blocks() <= args.block:
