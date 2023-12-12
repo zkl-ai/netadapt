@@ -131,7 +131,7 @@ class networkUtils_resnet34(NetworkUtilsAbstract):
         
         val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=self.batch_size, shuffle=False,
-        num_workers=self.num_workers, pin_memory=True) #, sampler=valid_sampler)
+        num_workers=self.num_workers)#, pin_memory=True) #, sampler=valid_sampler)
         self.val_loader = val_loader   
 
         
