@@ -334,7 +334,7 @@ class networkUtils_vgg19(NetworkUtilsAbstract):
                 accuracy: (float) (0~100)
         '''
         
-        model = model.cuda()
+        model = model#.cuda()
         model.eval()
         acc = .0
         num_samples = .0
