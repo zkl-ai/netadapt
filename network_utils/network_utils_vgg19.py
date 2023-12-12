@@ -340,7 +340,7 @@ class networkUtils_vgg19(NetworkUtilsAbstract):
         num_samples = .0
         with torch.no_grad():
             for i, (input, target) in enumerate(self.val_loader):
-                input, target = input.cuda(), target.cuda()
+                # input, target = input.cuda(), target.cuda()
                 pred = model(input)
                 pred = pred.argmax(dim=1)
                 batch_acc = torch.sum(target == pred)
