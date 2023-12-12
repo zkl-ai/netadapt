@@ -89,7 +89,7 @@ def extract_feature_map_sizes(model, input_data_shape):
     '''
     fmap_sizes_dict = {}
     hooks = []
-    model = model.cuda()
+    model = model#.cuda()
     model.eval()
 
     def _register_hook(module):
