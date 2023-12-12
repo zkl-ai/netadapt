@@ -58,7 +58,7 @@ def worker(args):
     print('Simplified model:')
     print(simplified_model)
     
-    fine_tuned_model = network_utils.fine_tune(simplified_model, args.short_term_fine_tune_iteration)
+    fine_tuned_model = simplified_model#network_utils.fine_tune(simplified_model, args.short_term_fine_tune_iteration)
     fine_tuned_accuracy = network_utils.evaluate(fine_tuned_model)
     print('Accuracy after finetune:', fine_tuned_accuracy)
     
