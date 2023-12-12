@@ -33,7 +33,7 @@ def worker(args):
     """
 
     # Set the GPU.
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
+    # os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
     # Get the network utils.
     model = torch.load(args.model_path)
