@@ -236,7 +236,7 @@ def master(args):
         current_accuracy = history[_KEY_HISTORY][-1][_KEY_ACCURACY]
 
         # Get the network utils.
-        model = torch.load(current_model_path, map_location=torch.device('cpu'))#lambda storage, loc: storage)
+        model = torch.load(current_model_path, lambda storage, loc: storage)
              
         # Select network_utils.
         model_arch = args.arch
@@ -280,7 +280,7 @@ def master(args):
         copyfile(args.init_model_path, current_model_path)
 
         # Initialize variables.
-        model = torch.load(current_model_path, map_location=torch.device('cpu'))
+        model = torch.load(current_model_path)
         
         # Select network_utils.
         model_arch = args.arch
