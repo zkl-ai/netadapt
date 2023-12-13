@@ -131,7 +131,7 @@ class networkUtils_resnet34(NetworkUtilsAbstract):
         
         val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=self.batch_size, shuffle=False,
-        num_workers=self.num_workers)#, pin_memory=True) #, sampler=valid_sampler)
+        num_workers=self.num_workers, pin_memory=True) #, sampler=valid_sampler)
         self.val_loader = val_loader   
 
         
@@ -334,13 +334,13 @@ class networkUtils_resnet34(NetworkUtilsAbstract):
                 accuracy: (float) (0~100)
         '''
         
-        model = model#.cuda()
+        model = model.cuda()
         model.eval()
         acc = .0
         num_samples = .0
         with torch.no_grad():
             for i, (input, target) in enumerate(self.val_loader):
-                # input, target = input.cuda(), target.cuda()
+                input, target = input.cuda(), target.cuda()
                 pred = model(input)
                 pred = pred.argmax(dim=1)
                 batch_acc = torch.sum(target == pred)
@@ -357,4 +357,4 @@ class networkUtils_resnet34(NetworkUtilsAbstract):
     
 
 def resnet34(model, input_data_shape, dataset_path, finetune_lr=1e-3):
-    return networkUtils_vgg19(model, input_data_shape, dataset_path, finetune_lr)
+    return networkUtils_resnet34(model, input_data_shape, dataset_path, finetune_lr)
