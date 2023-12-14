@@ -354,6 +354,7 @@ class networkUtils_vgg19(NetworkUtilsAbstract):
         # print(' ')
         # print('Test accuracy: {:4.2f}% '.format(float(acc/num_samples*100)))
         # print('===================================================================')
+        torch.cuda.empty_cache()
         return acc/num_samples*100
     
 
