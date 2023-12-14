@@ -107,7 +107,7 @@ def extract_feature_map_sizes(model, input_data_shape):
             hooks.append(module.register_forward_hook(_hook))
 
     model.apply(_register_hook)
-    _ = model(torch.randn([1, *input_data_shape]).cuda())
+    _ = model(torch.randn([1, *input_data_shape]))#.cuda())
     for hook in hooks:
         hook.remove()
 
