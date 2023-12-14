@@ -81,6 +81,7 @@ def worker(args):
 
     # release GPU memory
     del simplified_model, fine_tuned_model
+    torch.cuda.empty_cache()
     return 
 
 if __name__ == '__main__':
